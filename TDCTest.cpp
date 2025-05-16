@@ -218,22 +218,24 @@ int main()
                  zcf, zcf + xi.size() + yf.size() - 1);
 
   // Test 6: Re-run of Test 3, with a forward_list<> in place of the list<>.
-  //         This version will not compile if you reverse the roles of 'xls'
-  //         and 'yfd', because the first two arguments must be bidirectional
-  //         iterators (which forward_list<> does not possess).
-  //         The reason is that the convolution sum involves running over the
-  //         first input backwards and the second input forwards. Thus the first
-  //         input must permit backward iteration, which forward_list<> cannot.
+  // This version will not compile if you reverse the roles of 'xls' and 'yfd',
+  //   because the convolution sum traverses the first input sequence backwards.
+  //   Hence the first two arguments to convolve_time must be bidirectional
+  //   iterators, which forward_list<> does not possess.
+  // Here we also use the return value of convolve_time to print the valid
+  //   range of output lags.
 
   std::puts("\n=======\nTest 6:\n=======\n");
   
   std::forward_list<yd_t> yfd(yld.begin(), yld.end());
 
-  convolve_time(xls.begin(), xls.end(),
-                yfd.begin(), yfd.end(),
-                zdd.begin(), zdd.end());
+  auto [valid_begin,valid_past_end]
+  = convolve_time(xls.begin(), xls.end(),
+                  yfd.begin(), yfd.end(),
+                  zdd.begin(), zdd.end());
   
   printseq(zdd.begin(), zdd.end());
-  
+  std::cout << "\nValid range : \n";
+  printseq(valid_begin, valid_past_end);
   std::cout << '\n';
 }

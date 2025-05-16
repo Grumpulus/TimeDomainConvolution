@@ -1,7 +1,8 @@
-# Time domain convolution template
+# Time domain convolution template (one-dimensional)
 
 **template \<typename XIt, typename YIt, typename ZIt>**\
-**ZIt convolve_time\( XIt x0, XIt xX, YIt y0, YIt yY, ZIt z0, ZIt zZ )**
+**std::pair<ZIt,ZIt>\
+convolve_time\( XIt x0, XIt xX, YIt y0, YIt yY, ZIt z0, ZIt zZ )**
 
 ### Template parameters
 
@@ -26,8 +27,9 @@ If any input or output sequences are C arrays or dynamically allocated arrays,
 
 ## Return value
 
-Returns an iterator to the first "valid" element of the output sequence, i.e.
-  the first element of the output sequence that is obtained without zero padding.
+Returns a pair of iterators to the first and past-last "valid" elements of the
+  output sequence, i.e. the bounding elements of the part of the output sequence
+  that can be obtained without zero padding.
   (The number of valid elements is one greater than the absolute difference of
   the lengths of the input sequences.)
 

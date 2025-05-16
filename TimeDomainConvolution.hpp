@@ -2,6 +2,7 @@
 #include <algorithm> // fill
 #include <stdexcept> // invalid_argument
 #include <tuple>
+#include <utility>   // pair
 
 #include <cstddef>   // ptrdiff_t
 
@@ -14,7 +15,8 @@
 //   the two input sequences. This means that the last argument (zZ) currently
 //   is redundant -- but it may not stay that way; I might add the option to
 //   output only certain coefficients.
-// Returns an iterator to the first non-leading output lag.
+// Returns begin and past-end iterators to the bounds of the "valid" output
+//   lags, viz. the range of lags that can be calculated without zero padding.
 
 // See the end of this file for more programming notes.
 
@@ -24,7 +26,8 @@ template <typename XIt,    // Iterator type of first input sequence
           requires std::bidirectional_iterator<XIt> &&
                    std::forward_iterator<YIt> &&
                    std::forward_iterator<ZIt>
-ZIt convolve_time( XIt x0, // begin() of first input sequence
+std::pair<ZIt,ZIt>
+    convolve_time( XIt x0, // begin() of first input sequence
                    XIt xX, // end() of first input sequence
                    YIt y0, // begin() of second input sequence
                    YIt yY, // end() of second input sequence
@@ -70,22 +73,17 @@ ZIt convolve_time( XIt x0, // begin() of first input sequence
 
   std::fill(z0, zZ, z_vt(0)); // we're including <algorithm> only for this
 
-  // L and H are the initial begin and end points of the convolution sum,
-  //   expressed as indices on y (the second input sequence).
-  // Normally, L is always 0, and H is always 1.
-  // During development, I decided to see whether I could get the main loop to
-  //   work (with no access errors) if one or the other (not both) of the two
-  //   input series had zero length. These definitions of L and H do allow that.
-  //   The output will be all-zeros, with length one less than that of the
-  //   other, non-empty input sequence.
-  // I had to disallow this because it caused problems for the return value.
-  // If you want to play with it, replace the || in the zero-length input
-  //   sequence check with && (note this invalidates the error message).
-  // This will probably be taken out in the next revision.
+  // L and H are the begin and past-end points of the convolution sum, expressed
+  //   as indices on y (the second input sequence). They initialize to 0 and 1
+  //   because the sum that gives the first output lag has only one term.
+  // The current version of the code uses iterators instead of indices to
+  //   perform the convolution sum, so L and H are not really needed anymore. 
+  //   However, they are useful for understanding the algorithm, so I have
+  //   retained them, and indicated where they used to be updated back when
+  //   they were still needed.
 
-  auto L = (zer0 > 1 - X)   // 1 if X is 0, else 0 (hence always 0 now)
-         ?  zer0 : 1 - X;
-  auto H = (Y < 1 ? Y : 1); // 0 if Y is 0, else 1 (hence always 1 now)
+  auto L = 0;
+  auto H = 1;
 
   // yL, yH, and xTmL are iterators to y[L], y[H], and x[T-L] (see below).
   
@@ -97,9 +95,11 @@ ZIt convolve_time( XIt x0, // begin() of first input sequence
    * MAIN LOOP *
   \*************/
   
+  // Here T is the output lag index.
+
   for (auto [T,zT]=std::tuple{zer0,z0};  T<Z;  ++T,++zT)
   {
-    // For the current T, calculate z[T] = sum_{L}^{H-1} y[t] x[T-t].
+    // Calculate z[T] = sum_{L}^{H-1} y[t] x[T-t].
 
     for (auto [yt,xTmt]=std::tuple{yL,xTmL};  yt!=yH;  ++yt,++xTmt)
     {
@@ -107,8 +107,7 @@ ZIt convolve_time( XIt x0, // begin() of first input sequence
     }
    
     // Update yL, yH, and xTmL for the next value of T.
-    // (Earlier versions of the above sum used indices instead of iterators, so
-    //   L and H were updated as well; the comments show where.)
+    // (This is where L and H used to be updated; the comments show where.)
 
     if (T >= X - 1)
       ++yL;   // ++L
@@ -119,9 +118,15 @@ ZIt convolve_time( XIt x0, // begin() of first input sequence
       ++yH;   // ++H
   }
   
-  // Return a pointer to the first non-leading ("valid") lag.
-  // [NB. This will need updating if we allow the user to bobtail the number of
-  //   lags being returned in a revision.]
+  // Return begin and past-end iterators to the "valid" (non-zero-padded) range
+  //   of the output sequence.
+  // [NB. Remember to update this if we ever allow the user to bobtail the
+  //   range of returned lags in a revision.]
   
-  return std::next(z0, (X < Y ? X : Y)-1);
+  auto minXY = (X < Y ? X : Y);
+  auto maxXY = (X > Y ? X : Y);
+
+  return std::pair( std::next(z0, minXY-1),
+                    std::next(z0, maxXY  )
+                  );
 }
